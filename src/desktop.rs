@@ -7,6 +7,7 @@ use std::path::Path;
 pub struct DesktopEntry {
     pub name: String,
     pub icon: String,
+    pub ty: String,
     pub comment: String,
     pub exec: String,
     pub categories: Vec<String>,
@@ -23,6 +24,7 @@ impl DesktopEntry {
         let mut icon = None;
         let mut comment = None;
         let mut exec = None;
+        let mut ty = None;
         let mut categories = Vec::new();
         let mut keywords = Vec::new();
 
@@ -47,12 +49,15 @@ impl DesktopEntry {
                 }
             } else if line.starts_with("Icon=") {
                 icon = Some(line[5..].to_string());
+            } else if line.starts_with("Type=") {
+                ty = Some(line[5..].to_string());
             }
         }
 
         Ok(DesktopEntry {
             name: name.ok_or(io::Error::new(io::ErrorKind::Other, "Missing Name"))?,
             icon: icon.unwrap_or(String::new()),
+            ty: ty.unwrap_or(String::from("Application")),
             comment: comment.unwrap_or(String::new()),
             exec: exec.ok_or(io::Error::new(io::ErrorKind::Other, "Missing Exec"))?,
             categories,

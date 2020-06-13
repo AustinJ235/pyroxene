@@ -24,7 +24,7 @@ fn main() {
     Basalt::initialize(
 		basalt::Options::default()
 			.ignore_dpi(true)
-			.window_size(300, 300)
+			.window_size(275, 262)
 			.title("Pyroxene")
             .composite_alpha(basalt::vulkano::swapchain::CompositeAlpha::PreMultiplied)
 			.app_loop(),
@@ -135,6 +135,20 @@ fn main() {
                         text_wrap: Some(ImtTextWrap::None),
                         .. BinStyle::default()
                     });
+
+                    if ei == category.entries.len() - 1 {
+                        let entry_bin_cp = entry_bin.clone();
+                        let basalt_cp = basalt.clone();
+
+                        entry_bin.on_update(Arc::new(move || {
+                            let post = entry_bin_cp.post_update();
+
+                            if basalt_cp.window().inner_dimensions()[1] < post.bro[1].ceil() as u32 {
+                                basalt_cp.window().request_resize(275, post.bro[1].ceil() as u32 + 1);
+                                basalt_cp.force_recreate_swapchain();
+                            }
+                        }));
+                    }
 
                     let exec = entry.exec.clone();
                     let basalt_cp = basalt.clone();
