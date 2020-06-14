@@ -10,7 +10,11 @@ pub struct Category {
 }
 
 impl Category {
-    pub fn new<Id: Into<String>, N: Into<String>, Ic: Into<String>>(iden: Id, name: N, icon: Ic) -> Self {
+    pub fn new<Id: Into<String>, N: Into<String>, Ic: Into<String>>(
+        iden: Id,
+        name: N,
+        icon: Ic,
+    ) -> Self {
         Category {
             iden: iden.into(),
             name: name.into(),

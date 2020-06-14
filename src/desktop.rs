@@ -1,9 +1,6 @@
-use std::io::Read;
-use std::fs::File;
-use std::io;
-use std::path::Path;
+use std::{fs::File, io, io::Read, path::Path};
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct DesktopEntry {
     pub name: String,
     pub icon: String,

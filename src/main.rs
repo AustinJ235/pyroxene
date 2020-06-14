@@ -1,92 +1,105 @@
 extern crate basalt;
 extern crate shellexpand;
 
-pub mod desktop;
 pub mod category;
+pub mod desktop;
 
-use desktop::DesktopEntry;
-use category::Category;
-
-use std::path::PathBuf;
-use std::sync::Arc;
 use basalt::{
-	input::Qwery,
-	interface::bin::{Color, BinPosition, BinStyle},
-	Basalt,
+    ilmenite::ImtTextWrap,
+    input::{InputHookRes, MouseButton, Qwery},
+    interface::{
+        bin::{Bin, BinPosition, BinStyle, Color},
+        hook::{BinHook, BinHookFn},
+    },
+    Basalt,
 };
-use basalt::interface::hook::{BinHook,BinHookFn};
-use basalt::interface::bin::Bin;
-use basalt::ilmenite::ImtTextWrap;
-use basalt::input::InputHookRes;
-use basalt::input::MouseButton;
-use std::process::Command;
-use std::collections::BTreeMap;
+use category::Category;
+use desktop::DesktopEntry;
+use std::{collections::BTreeMap, path::PathBuf, process::Command, sync::Arc, time::Instant};
 
 fn main() {
     Basalt::initialize(
-		basalt::Options::default()
-			.ignore_dpi(true)
-			.window_size(413, 482)
-			.title("Pyroxene")
+        basalt::Options::default()
+            .ignore_dpi(true)
+            .window_size(413, 482)
+            .title("Pyroxene")
             .composite_alpha(basalt::vulkano::swapchain::CompositeAlpha::PreMultiplied)
-			.app_loop(),
-		Box::new(move |basalt_res| {
-			let basalt = basalt_res.expect("Failed to initilize basalt!");
+            .app_loop(),
+        Box::new(move |basalt_res| {
+            let basalt = basalt_res.expect("Failed to initilize basalt!");
             let basalt_cp = basalt.clone();
+            let start = Instant::now();
 
-            basalt.input_ref().on_key_press(Qwery::Esc, Arc::new(move |_| {
-                basalt_cp.exit();
-                InputHookRes::Success
-            }));
+            basalt.input_ref().on_key_press(
+                Qwery::Esc,
+                Arc::new(move |_| {
+                    basalt_cp.exit();
+                    InputHookRes::Success
+                }),
+            );
 
             let search_dirs = vec![
                 PathBuf::from("/usr/share/applications/"),
-                shellexpand::tilde("~/.local/share/applications/").into_owned().into()
+                shellexpand::tilde("~/.local/share/applications/").into_owned().into(),
             ];
 
             let mut categories = vec![
-                Category::new("utility",     "Accessories",  "applications-utilities"),
-                Category::new("development", "Development",  "applications-development"),
-                Category::new("education",   "Education",    "applications-science"),
-                Category::new("game",        "Games",        "applications-games"),
-                Category::new("graphics",    "Graphics",     "applications-graphics"),
-                Category::new("audiovideo",  "Multimedia",   "applications-multimedia"),
-                Category::new("network",     "Network",      "applications-internet"),
-                Category::new("office",      "Office",       "applications-office"),
-                Category::new("other",       "Other",        "applications-other"),
-                Category::new("settings",    "Settings",     "applications-accessories"),
-                Category::new("system",      "System",       "applications-system"),
+                Category::new("utility", "Accessories", "applications-utilities"),
+                Category::new("development", "Development", "applications-development"),
+                Category::new("education", "Education", "applications-science"),
+                Category::new("game", "Games", "applications-games"),
+                Category::new("graphics", "Graphics", "applications-graphics"),
+                Category::new("audiovideo", "Multimedia", "applications-multimedia"),
+                Category::new("network", "Network", "applications-internet"),
+                Category::new("office", "Office", "applications-office"),
+                Category::new("other", "Other", "applications-other"),
+                Category::new("settings", "Settings", "applications-accessories"),
+                Category::new("system", "System", "applications-system"),
             ];
 
             let mut files = Vec::new();
 
             for search_dir in &search_dirs {
                 if search_dir.exists() {
-                    match search_dir.read_dir() {    
-                        Err(e) => println!("Warning: Failed to read directory: {:?} ({})", search_dir, e),
-                        Ok(entries) => for entry_result in entries {
-                            match entry_result {
-                                Err(e) => println!("Warning: Failed to read directory entry: {}", e),
-                                Ok(entry) => {
-                                    let entry_path = entry.path();
+                    match search_dir.read_dir() {
+                        Err(e) =>
+                            println!(
+                                "Warning: Failed to read directory: {:?} ({})",
+                                search_dir, e
+                            ),
+                        Ok(entries) =>
+                            for entry_result in entries {
+                                match entry_result {
+                                    Err(e) =>
+                                        println!(
+                                            "Warning: Failed to read directory entry: {}",
+                                            e
+                                        ),
+                                    Ok(entry) => {
+                                        let entry_path = entry.path();
 
-                                    if entry_path.is_file() {
-                                        files.push(entry_path);
-                                    }
+                                        if entry_path.is_file() {
+                                            files.push(entry_path);
+                                        }
+                                    },
                                 }
-                            }
-                        }
+                            },
                     }
                 }
             }
 
-            let entries: Vec<_> = files.into_iter().filter_map(|file| match DesktopEntry::new(&file) {
-                Ok(ok) => Some(Arc::new(ok)),
-                Err(e) => {
-                    println!("Failed to parse desktop file: {:?}: {}", file, e);
-                    None
-                }
-            }).collect();
+            let entries: Vec<_> = files
+                .into_iter()
+                .filter_map(|file| {
+                    match DesktopEntry::new(&file) {
+                        Ok(ok) => Some(Arc::new(ok)),
+                        Err(e) => {
+                            println!("Failed to parse desktop file: {:?}: {}", file, e);
+                            None
+                        },
+                    }
+                })
+                .collect();
 
             for category in &mut categories {
                 category.add_entries(&entries);
@@ -98,12 +111,13 @@ fn main() {
             let container = bins.pop().unwrap();
 
             container.style_update(BinStyle {
+                position: Some(BinPosition::Window),
                 pos_from_t: Some(0.0),
-                pos_from_b: Some(0.0),
+                pos_from_l: Some(0.0),
                 width: Some(413.0),
                 height: Some(482.0),
                 back_color: Some(Color::srgb_hex("2a2a2cfa")),
-                .. BinStyle::default()
+                ..BinStyle::default()
             });
 
             let right = bins.pop().unwrap();
@@ -116,7 +130,7 @@ fn main() {
                 pos_from_r: Some(3.0),
                 pos_from_b: Some(3.0),
                 back_color: Some(Color::srgb_hex("00000080")),
-                .. BinStyle::default()
+                ..BinStyle::default()
             });
 
             let mut category_bins = Vec::new();
@@ -137,13 +151,13 @@ fn main() {
                     text_height: Some(12.5),
                     text_color: Some(Color::srgb_hex("f8f8f8ff")),
                     overflow_y: Some(true),
-                    .. BinStyle::default()
+                    ..BinStyle::default()
                 });
 
                 let mut x = 3.0;
                 let mut y = 3.0;
 
-                for (ei, entry) in category.entries.iter().enumerate() {
+                for entry in category.entries.iter() {
                     let entry_bin = bins.pop().unwrap();
                     right.add_child(entry_bin.clone());
 
@@ -167,7 +181,7 @@ fn main() {
                         text_height: Some(12.5),
                         text_color: Some(Color::srgb_hex("f8f8f8ff")),
                         text_wrap: Some(ImtTextWrap::None),
-                        .. BinStyle::default()
+                        ..BinStyle::default()
                     });
 
                     y += 25.0;
@@ -180,15 +194,18 @@ fn main() {
                     let exec = entry.exec.clone();
                     let basalt_cp = basalt.clone();
 
-                    entry_bin.on_mouse_press(MouseButton::Left, Arc::new(move |_, _| {
-                        Command::new("sh")
-                            .arg("-c")
-                            .arg(shellexpand::full(&exec).unwrap().into_owned())
-                            .spawn()
-                            .unwrap();
-                        
-                        basalt_cp.exit();
-                    }));
+                    entry_bin.on_mouse_press(
+                        MouseButton::Left,
+                        Arc::new(move |_, _| {
+                            Command::new("sh")
+                                .arg("-c")
+                                .arg(shellexpand::full(&exec).unwrap().into_owned())
+                                .spawn()
+                                .unwrap();
+
+                            basalt_cp.exit();
+                        }),
+                    );
                 }
 
                 category_bins.push(category_bin);
@@ -206,7 +223,7 @@ fn main() {
                         cbin.style_update(BinStyle {
                             border_size_b: Some(1.0),
                             border_color_b: Some(Color::srgb_hex("4040d0ff")),
-                            .. cbin.style_copy()
+                            ..cbin.style_copy()
                         });
                     } else {
                         if let Some(entry_bins) = category_entry_bins.get(&cbin.id()) {
@@ -216,7 +233,7 @@ fn main() {
                         cbin.style_update(BinStyle {
                             border_size_b: None,
                             border_color_b: None,
-                            .. cbin.style_copy()
+                            ..cbin.style_copy()
                         });
                     }
                 }
@@ -226,7 +243,8 @@ fn main() {
                 c.add_hook_raw(BinHook::MouseEnter, mouse_enter_func.clone());
             });
 
+            println!("Launched in {} ms!", start.elapsed().as_micros() as f32 / 1000.0);
             basalt.wait_for_exit().unwrap();
-        })
+        }),
     );
 }
