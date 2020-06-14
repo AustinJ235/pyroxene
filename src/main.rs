@@ -1,4 +1,5 @@
 extern crate basalt;
+extern crate shellexpand;
 
 pub mod desktop;
 pub mod category;
@@ -39,7 +40,7 @@ fn main() {
 
             let search_dirs = vec![
                 PathBuf::from("/usr/share/applications/"),
-                PathBuf::from("~/.local/share/applications/")
+                shellexpand::tilde("~/.local/share/applications/").into_owned().into()
             ];
 
             let mut categories = vec![
@@ -103,13 +104,13 @@ fn main() {
                     pos_from_l: Some(0.0),
                     width: Some(125.0),
                     height: Some(24.0),
-                    back_color: Some(Color::srgb_hex("ffffff")),
+                    back_color: Some(Color::srgb_hex("303030ff")),
                     pad_t: Some(6.0),
                     pad_l: Some(6.0),
                     pad_r: Some(6.0),
                     text: category.name.clone(),
                     text_height: Some(12.0),
-                    text_color: Some(Color::srgb_hex("000000")),
+                    text_color: Some(Color::srgb_hex("f8f8f8ff")),
                     overflow_y: Some(true),
                     .. BinStyle::default()
                 });
@@ -125,13 +126,13 @@ fn main() {
                         pos_from_l: Some(125.0),
                         width: Some(150.0),
                         height: Some(24.0),
-                        back_color: Some(Color::srgb_hex("ffffff")),
+                        back_color: Some(Color::srgb_hex("303030ff")),
                         pad_t: Some(6.0),
                         pad_l: Some(6.0),
                         pad_r: Some(6.0),
                         text: entry.name.clone(),
                         text_height: Some(12.0),
-                        text_color: Some(Color::srgb_hex("000000ff")),
+                        text_color: Some(Color::srgb_hex("f8f8f8ff")),
                         text_wrap: Some(ImtTextWrap::None),
                         .. BinStyle::default()
                     });
