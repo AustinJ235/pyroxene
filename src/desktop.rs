@@ -30,27 +30,41 @@ impl DesktopEntry {
 
         for line in buffer.lines() {
             if line.starts_with("Name=") {
-                name = Some(line[5..].to_string());
+                if name.is_none() {
+                    name = Some(line[5..].to_string());
+                }
             } else if line.starts_with("Comment=") {
-                comment = Some(line[8..].to_string());
+                if comment.is_none() {
+                    comment = Some(line[8..].to_string());
+                }
             } else if line.starts_with("Exec=") {
-                exec = Some(line[5..].to_string());
+                if exec.is_none() {
+                    exec = Some(line[5..].to_string());
+                }
             } else if line.starts_with("Categories=") {
-                for category in line[11..].split(";") {
-                    if !category.is_empty() {
-                        categories.push(category.to_owned());
+                if categories.is_empty() {
+                    for category in line[11..].split(";") {
+                        if !category.is_empty() {
+                            categories.push(category.to_owned());
+                        }
                     }
                 }
             } else if line.starts_with("Keywords=") {
-                for keyword in line[9..].split(";") {
-                    if !keyword.is_empty() {
-                        keywords.push(keyword.to_owned());
+                if keywords.is_empty() {
+                    for keyword in line[9..].split(";") {
+                        if !keyword.is_empty() {
+                            keywords.push(keyword.to_owned());
+                        }
                     }
                 }
             } else if line.starts_with("Icon=") {
-                icon = Some(line[5..].to_string());
+                if icon.is_none() {
+                    icon = Some(line[5..].to_string());
+                }
             } else if line.starts_with("Type=") {
-                ty = Some(line[5..].to_string());
+                if ty.is_none() {
+                    ty = Some(line[5..].to_string());
+                }
             }
         }
 

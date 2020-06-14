@@ -157,7 +157,7 @@ fn main() {
                     entry_bin.on_mouse_press(MouseButton::Left, Arc::new(move |_, _| {
                         Command::new("sh")
                             .arg("-c")
-                            .arg(&exec)
+                            .arg(shellexpand::full(&exec).unwrap().into_owned())
                             .spawn()
                             .unwrap();
                         
