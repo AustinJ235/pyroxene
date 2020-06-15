@@ -26,9 +26,7 @@ impl Category {
     pub fn add_entries(&mut self, entries: &Vec<Arc<DesktopEntry>>) {
         for entry in entries {
             if entry.categories.iter().any(|c| c.to_lowercase() == self.iden.to_lowercase()) {
-                if entry.ty.to_lowercase() == "application" {
-                    self.entries.push(entry.clone());
-                }
+                self.entries.push(entry.clone());
             }
         }
 

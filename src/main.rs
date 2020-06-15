@@ -14,7 +14,7 @@ use basalt::{
     Basalt,
 };
 use category::Category;
-use desktop::DesktopEntry;
+use desktop::{DesktopEntry, DesktopEntryErr};
 use std::{collections::BTreeMap, path::PathBuf, process::Command, sync::Arc, time::Instant};
 
 fn main() {
@@ -93,10 +93,20 @@ fn main() {
                 .filter_map(|file| {
                     match DesktopEntry::new(&file) {
                         Ok(ok) => Some(Arc::new(ok)),
-                        Err(e) => {
-                            println!("Failed to parse desktop file: {:?}: {}", file, e);
-                            None
-                        },
+                        Err(e) =>
+                            match e {
+                                DesktopEntryErr::NotApplication
+                                | DesktopEntryErr::Hidden
+                                | DesktopEntryErr::OnlyShowIn
+                                | DesktopEntryErr::NotShowIn => None,
+                                e => {
+                                    println!(
+                                        "Failed to parse desktop file: {:?}: {:?}",
+                                        file, e
+                                    );
+                                    None
+                                },
+                            },
                     }
                 })
                 .collect();
@@ -106,8 +116,8 @@ fn main() {
             }
 
             categories.retain(|c| !c.entries.is_empty());
-            let total_bins: usize = categories.iter().map(|c| c.entries.len() + 2).sum();
-            let mut bins = basalt.interface_ref().new_bins(total_bins + 1);
+            let total_bins: usize = categories.iter().map(|c| c.entries.len() + 1).sum();
+            let mut bins = basalt.interface_ref().new_bins(total_bins + 2);
             let container = bins.pop().unwrap();
 
             container.style_update(BinStyle {
@@ -116,7 +126,8 @@ fn main() {
                 pos_from_l: Some(0.0),
                 width: Some(413.0),
                 height: Some(482.0),
-                back_color: Some(Color::srgb_hex("2a2a2cfa")),
+                back_color: Some(Color::srgb_hex("2a2a2cfc")),
+                border_radius_br: Some(3.0),
                 ..BinStyle::default()
             });
 
@@ -129,7 +140,11 @@ fn main() {
                 pos_from_l: Some(103.0),
                 pos_from_r: Some(3.0),
                 pos_from_b: Some(3.0),
-                back_color: Some(Color::srgb_hex("00000080")),
+                back_color: Some(Color::srgb_hex("ffffff10")),
+                border_radius_tl: Some(3.0),
+                border_radius_tr: Some(3.0),
+                border_radius_bl: Some(3.0),
+                border_radius_br: Some(3.0),
                 ..BinStyle::default()
             });
 
@@ -173,10 +188,14 @@ fn main() {
                         pos_from_l: Some(x),
                         width: Some(150.0),
                         height: Some(24.0),
-                        back_color: Some(Color::srgb_hex("ffffff20")),
+                        back_color: Some(Color::srgb_hex("ffffff1a")),
                         pad_t: Some(6.0),
                         pad_l: Some(6.0),
-                        pad_r: Some(6.0),
+                        pad_r: Some(8.0),
+                        border_radius_tl: Some(2.0),
+                        border_radius_tr: Some(2.0),
+                        border_radius_bl: Some(2.0),
+                        border_radius_br: Some(2.0),
                         text: entry.name.clone(),
                         text_height: Some(12.5),
                         text_color: Some(Color::srgb_hex("f8f8f8ff")),
@@ -193,6 +212,20 @@ fn main() {
 
                     let exec = entry.exec.clone();
                     let basalt_cp = basalt.clone();
+
+                    entry_bin.add_hook_raw(BinHook::MouseEnter, Arc::new(move |bin, _| {
+                        bin.style_update(BinStyle {
+                            back_color: Some(Color::srgb_hex("ffffff16")),
+                            .. bin.style_copy()
+                        });
+                    }));
+
+                    entry_bin.add_hook_raw(BinHook::MouseLeave, Arc::new(move |bin, _| {
+                        bin.style_update(BinStyle {
+                            back_color: Some(Color::srgb_hex("ffffff1a")),
+                            .. bin.style_copy()
+                        });
+                    }));
 
                     entry_bin.on_mouse_press(
                         MouseButton::Left,
