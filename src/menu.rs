@@ -36,6 +36,52 @@ pub struct MenuEntry {
     entry: Arc<DesktopEntry>,
 }
 
+impl MenuEntry {
+    fn add_hooks(&self, basalt: Arc<Basalt>) {
+        self.entry_bin.add_hook_raw(
+            BinHook::MouseEnter,
+            Arc::new(move |bin, _| {
+                bin.style_update(BinStyle {
+                    back_color: Some(Color::srgb_hex("ffffff16")),
+                    ..bin.style_copy()
+                });
+            }),
+        );
+
+        self.entry_bin.add_hook_raw(
+            BinHook::MouseLeave,
+            Arc::new(move |bin, _| {
+                bin.style_update(BinStyle {
+                    back_color: Some(Color::srgb_hex("ffffff1a")),
+                    ..bin.style_copy()
+                });
+            }),
+        );
+
+        let entry = self.entry.clone();
+
+        self.entry_bin.on_mouse_press(
+            MouseButton::Left,
+            Arc::new(move |_, _| {
+                let exec = entry
+                    .exec
+                    .replace("%f", "")
+                    .replace("%F", "")
+                    .replace("%u", "")
+                    .replace("%U", "")
+                    .replace(
+                        "%i",
+                        entry.icon.clone().as_ref().map(|v| v.as_str()).unwrap_or(""),
+                    )
+                    .replace("%c", entry.name.as_str())
+                    .replace("%k", "");
+                Command::new("sh").arg("-c").arg(exec).spawn().unwrap();
+                basalt.exit();
+            }),
+        );
+    }
+}
+
 impl Menu {
     pub fn new(
         basalt: Arc<Basalt>,
@@ -219,36 +265,7 @@ impl Menu {
 
         for menu_cat in self.categories.iter() {
             for menu_en in menu_cat.entries.iter() {
-                menu_en.entry_bin.add_hook_raw(
-                    BinHook::MouseEnter,
-                    Arc::new(move |bin, _| {
-                        bin.style_update(BinStyle {
-                            back_color: Some(Color::srgb_hex("ffffff16")),
-                            ..bin.style_copy()
-                        });
-                    }),
-                );
-
-                menu_en.entry_bin.add_hook_raw(
-                    BinHook::MouseLeave,
-                    Arc::new(move |bin, _| {
-                        bin.style_update(BinStyle {
-                            back_color: Some(Color::srgb_hex("ffffff1a")),
-                            ..bin.style_copy()
-                        });
-                    }),
-                );
-
-                let entry = menu_en.entry.clone();
-                let basalt = self.basalt.clone();
-
-                menu_en.entry_bin.on_mouse_press(
-                    MouseButton::Left,
-                    Arc::new(move |_, _| {
-                        Command::new("sh").arg("-c").arg(entry.exec.clone()).spawn().unwrap();
-                        basalt.exit();
-                    }),
-                );
+                menu_en.add_hooks(self.basalt.clone());
             }
         }
 
@@ -352,6 +369,7 @@ impl Menu {
                 y = 3.0;
             }
 
+            menu_entry.add_hooks(self.basalt.clone());
             search_entries.push(Arc::new(menu_entry));
         }
     }
