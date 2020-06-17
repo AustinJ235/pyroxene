@@ -3,25 +3,22 @@ extern crate shellexpand;
 
 pub mod category;
 pub mod desktop;
+pub mod menu;
 
 use basalt::{
-    ilmenite::ImtTextWrap,
-    input::{InputHookRes, MouseButton, Qwery},
-    interface::{
-        bin::{Bin, BinPosition, BinStyle, Color},
-        hook::{BinHook, BinHookFn},
-    },
+    input::{InputHookRes, Qwery},
     Basalt,
 };
 use category::Category;
 use desktop::{DesktopEntry, DesktopEntryErr};
-use std::{collections::BTreeMap, path::PathBuf, process::Command, sync::Arc, time::Instant};
+use menu::Menu;
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
 fn main() {
     Basalt::initialize(
         basalt::Options::default()
             .ignore_dpi(true)
-            .window_size(413, 482)
+            .window_size(413, 439)
             .title("Pyroxene")
             .composite_alpha(basalt::vulkano::swapchain::CompositeAlpha::PreMultiplied)
             .app_loop(),
@@ -116,165 +113,7 @@ fn main() {
             }
 
             categories.retain(|c| !c.entries.is_empty());
-            let total_bins: usize = categories.iter().map(|c| c.entries.len() + 1).sum();
-            let mut bins = basalt.interface_ref().new_bins(total_bins + 2);
-            let container = bins.pop().unwrap();
-
-            container.style_update(BinStyle {
-                position: Some(BinPosition::Window),
-                pos_from_t: Some(0.0),
-                pos_from_l: Some(0.0),
-                width: Some(413.0),
-                height: Some(482.0),
-                back_color: Some(Color::srgb_hex("2a2a2cfc")),
-                border_radius_br: Some(3.0),
-                ..BinStyle::default()
-            });
-
-            let right = bins.pop().unwrap();
-            container.add_child(right.clone());
-
-            right.style_update(BinStyle {
-                position: Some(BinPosition::Parent),
-                pos_from_t: Some(3.0),
-                pos_from_l: Some(103.0),
-                pos_from_r: Some(3.0),
-                pos_from_b: Some(3.0),
-                back_color: Some(Color::srgb_hex("ffffff10")),
-                border_radius_tl: Some(3.0),
-                border_radius_tr: Some(3.0),
-                border_radius_bl: Some(3.0),
-                border_radius_br: Some(3.0),
-                ..BinStyle::default()
-            });
-
-            let mut category_bins = Vec::new();
-            let mut category_entry_bins: BTreeMap<u64, Vec<Arc<Bin>>> = BTreeMap::new();
-
-            for (ci, category) in categories.iter().enumerate() {
-                let category_bin = bins.pop().unwrap();
-                container.add_child(category_bin.clone());
-
-                category_bin.style_update(BinStyle {
-                    position: Some(BinPosition::Parent),
-                    pos_from_t: Some((ci as f32 * 24.0) + 6.0),
-                    pos_from_l: Some(8.0),
-                    width: Some(88.0),
-                    height: Some(22.0),
-                    pad_t: Some(6.0),
-                    text: category.name.clone(),
-                    text_height: Some(12.5),
-                    text_color: Some(Color::srgb_hex("f8f8f8ff")),
-                    overflow_y: Some(true),
-                    ..BinStyle::default()
-                });
-
-                let mut x = 3.0;
-                let mut y = 3.0;
-
-                for entry in category.entries.iter() {
-                    let entry_bin = bins.pop().unwrap();
-                    right.add_child(entry_bin.clone());
-
-                    category_entry_bins
-                        .entry(category_bin.id())
-                        .or_insert_with(|| Vec::with_capacity(category.entries.len()))
-                        .push(entry_bin.clone());
-
-                    entry_bin.style_update(BinStyle {
-                        hidden: Some(true),
-                        position: Some(BinPosition::Parent),
-                        pos_from_t: Some(y),
-                        pos_from_l: Some(x),
-                        width: Some(150.0),
-                        height: Some(24.0),
-                        back_color: Some(Color::srgb_hex("ffffff1a")),
-                        pad_t: Some(6.0),
-                        pad_l: Some(6.0),
-                        pad_r: Some(8.0),
-                        border_radius_tl: Some(2.0),
-                        border_radius_tr: Some(2.0),
-                        border_radius_bl: Some(2.0),
-                        border_radius_br: Some(2.0),
-                        text: entry.name.clone(),
-                        text_height: Some(12.5),
-                        text_color: Some(Color::srgb_hex("f8f8f8ff")),
-                        text_wrap: Some(ImtTextWrap::None),
-                        ..BinStyle::default()
-                    });
-
-                    y += 25.0;
-
-                    if y >= 482.0 {
-                        x += 151.0;
-                        y = 3.0;
-                    }
-
-                    let exec = entry.exec.clone();
-                    let basalt_cp = basalt.clone();
-
-                    entry_bin.add_hook_raw(BinHook::MouseEnter, Arc::new(move |bin, _| {
-                        bin.style_update(BinStyle {
-                            back_color: Some(Color::srgb_hex("ffffff16")),
-                            .. bin.style_copy()
-                        });
-                    }));
-
-                    entry_bin.add_hook_raw(BinHook::MouseLeave, Arc::new(move |bin, _| {
-                        bin.style_update(BinStyle {
-                            back_color: Some(Color::srgb_hex("ffffff1a")),
-                            .. bin.style_copy()
-                        });
-                    }));
-
-                    entry_bin.on_mouse_press(
-                        MouseButton::Left,
-                        Arc::new(move |_, _| {
-                            Command::new("sh")
-                                .arg("-c")
-                                .arg(shellexpand::full(&exec).unwrap().into_owned())
-                                .spawn()
-                                .unwrap();
-
-                            basalt_cp.exit();
-                        }),
-                    );
-                }
-
-                category_bins.push(category_bin);
-            }
-
-            let category_bins_cp = category_bins.clone();
-
-            let mouse_enter_func: BinHookFn = Arc::new(move |bin: Arc<Bin>, _| {
-                for cbin in &category_bins_cp {
-                    if cbin.id() == bin.id() {
-                        if let Some(entry_bins) = category_entry_bins.get(&cbin.id()) {
-                            entry_bins.iter().for_each(|c| c.hidden(Some(false)));
-                        }
-
-                        cbin.style_update(BinStyle {
-                            border_size_b: Some(1.0),
-                            border_color_b: Some(Color::srgb_hex("4040d0ff")),
-                            ..cbin.style_copy()
-                        });
-                    } else {
-                        if let Some(entry_bins) = category_entry_bins.get(&cbin.id()) {
-                            entry_bins.iter().for_each(|c| c.hidden(Some(true)));
-                        }
-
-                        cbin.style_update(BinStyle {
-                            border_size_b: None,
-                            border_color_b: None,
-                            ..cbin.style_copy()
-                        });
-                    }
-                }
-            });
-
-            category_bins.iter().for_each(|c| {
-                c.add_hook_raw(BinHook::MouseEnter, mouse_enter_func.clone());
-            });
+            let _menu = Menu::new(basalt.clone(), categories, entries);
 
             println!("Launched in {} ms!", start.elapsed().as_micros() as f32 / 1000.0);
             basalt.wait_for_exit().unwrap();
