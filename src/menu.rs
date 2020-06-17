@@ -255,7 +255,9 @@ impl Menu {
                             text.push(*v);
                         },
                         Character::Backspace => {
-                            text.pop();
+                            if !text.is_empty() {
+                                text.pop();
+                            }
                         },
                     }
 
