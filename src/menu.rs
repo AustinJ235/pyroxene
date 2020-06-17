@@ -11,6 +11,7 @@ use basalt::{
     Basalt,
 };
 use std::{process::Command, sync::Arc};
+use std::sync::Mutex;
 
 pub struct Menu {
     basalt: Arc<Basalt>,
@@ -19,6 +20,7 @@ pub struct Menu {
     container: Arc<Bin>,
     right: Arc<Bin>,
     search: Arc<Bin>,
+    search_entries: Mutex<Vec<Arc<MenuEntry>>>,
 }
 
 pub struct MenuCategory {
@@ -44,10 +46,11 @@ impl Menu {
         let mut menu = Menu {
             basalt,
             categories: Vec::with_capacity(categories.len()),
-            entries: Vec::with_capacity(entries.len()),
+            entries,
             container: bins.pop().unwrap(),
             right: bins.pop().unwrap(),
             search: bins.pop().unwrap(),
+            search_entries: Mutex::new(Vec::new()),
         };
 
         menu.container.add_child(menu.right.clone());
@@ -174,6 +177,8 @@ impl Menu {
         let menu = self.clone();
 
         let nav_enter_func: BinHookFn = Arc::new(move |bin: Arc<Bin>, _| {
+            menu.search_entries.lock().unwrap().clear();
+
             for menu_cat in menu.categories.iter() {
                 if bin.id() == menu_cat.nav_bin.id() {
                     menu_cat.entries.iter().for_each(|e| {
@@ -232,7 +237,6 @@ impl Menu {
                     MouseButton::Left,
                     Arc::new(move |_, _| {
                         Command::new("sh").arg("-c").arg(entry.exec.clone()).spawn().unwrap();
-
                         basalt.exit();
                     }),
                 );
@@ -261,6 +265,8 @@ impl Menu {
                         },
                     }
 
+                    menu.display_search(text.clone());
+
                     menu.search.style_update(BinStyle {
                         text,
                         ..menu.search.style_copy()
@@ -270,5 +276,77 @@ impl Menu {
                 InputHookRes::Success
             }),
         );
+    }
+
+    fn display_search(&self, text: String) {
+        let mut entries = self.entries.clone();
+
+        entries.sort_by_key(|e| {
+            (strsim::jaro_winkler(
+                e.name.as_str(),
+                text.as_str()
+            ) * u64::max_value() as f64).floor() as u64
+        });
+
+        for menu_cat in self.categories.iter() {
+            menu_cat.entries.iter().for_each(|e| {
+                e.entry_bin.hidden(Some(true));
+            });
+
+            menu_cat.nav_bin.style_update(BinStyle {
+                border_size_b: None,
+                border_color_b: None,
+                ..menu_cat.nav_bin.style_copy()
+            });
+        }
+
+        let mut search_entries = self.search_entries.lock().unwrap();
+        search_entries.clear();
+        let mut x = 3.0;
+        let mut y = 3.0;
+        let mut bins = self.basalt.interface_ref().new_bins(34);
+
+        for entry in entries.into_iter().rev() {
+            if search_entries.len() >= 34 {
+                break;
+            }
+
+            let menu_entry = MenuEntry {
+                entry_bin: bins.pop().unwrap(),
+                entry: entry.clone(),
+            };
+
+            self.right.add_child(menu_entry.entry_bin.clone());
+
+            menu_entry.entry_bin.style_update(BinStyle {
+                position: Some(BinPosition::Parent),
+                pos_from_t: Some(y),
+                pos_from_l: Some(x),
+                width: Some(150.0),
+                height: Some(24.0),
+                back_color: Some(Color::srgb_hex("ffffff1a")),
+                pad_t: Some(6.0),
+                pad_l: Some(6.0),
+                pad_r: Some(8.0),
+                border_radius_tl: Some(2.0),
+                border_radius_tr: Some(2.0),
+                border_radius_bl: Some(2.0),
+                border_radius_br: Some(2.0),
+                text: entry.name.clone(),
+                text_height: Some(12.5),
+                text_color: Some(Color::srgb_hex("f8f8f8ff")),
+                text_wrap: Some(ImtTextWrap::None),
+                ..BinStyle::default()
+            });
+
+            y += 25.0;
+
+            if y >= 420.0 {
+                x += 151.0;
+                y = 3.0;
+            }
+
+            search_entries.push(Arc::new(menu_entry));
+        }
     }
 }

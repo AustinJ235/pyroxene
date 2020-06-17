@@ -1,5 +1,6 @@
 extern crate basalt;
 extern crate shellexpand;
+extern crate strsim;
 
 pub mod category;
 pub mod desktop;

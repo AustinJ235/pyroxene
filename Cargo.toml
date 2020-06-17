@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 basalt = { path = "../basalt" }
 shellexpand = "2.0.0"
+strsim = "0.10.0"
