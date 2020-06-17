@@ -10,8 +10,10 @@ use basalt::{
     },
     Basalt,
 };
-use std::{process::Command, sync::Arc};
-use std::sync::Mutex;
+use std::{
+    process::Command,
+    sync::{Arc, Mutex},
+};
 
 pub struct Menu {
     basalt: Arc<Basalt>,
@@ -111,11 +113,12 @@ impl Menu {
 
             menu_category.nav_bin.style_update(BinStyle {
                 position: Some(BinPosition::Parent),
-                pos_from_t: Some((ci as f32 * 24.0) + 6.0),
-                pos_from_l: Some(8.0),
-                width: Some(88.0),
-                height: Some(22.0),
-                pad_t: Some(6.0),
+                pos_from_t: Some((ci as f32 * 25.0) + 6.0),
+                pos_from_l: Some(3.0),
+                pad_l: Some(5.0),
+                width: Some(97.0),
+                height: Some(24.0),
+                pad_t: Some(5.0),
                 text: menu_category.category.name.clone(),
                 text_height: Some(12.5),
                 text_color: Some(Color::srgb_hex("f8f8f8ff")),
@@ -186,8 +189,11 @@ impl Menu {
                     });
 
                     menu_cat.nav_bin.style_update(BinStyle {
-                        border_size_b: Some(1.0),
-                        border_color_b: Some(Color::srgb_hex("4040d0ff")),
+                        border_radius_tl: Some(2.0),
+                        border_radius_tr: Some(2.0),
+                        border_radius_bl: Some(2.0),
+                        border_radius_br: Some(2.0),
+                        back_color: Some(Color::srgb_hex("ffffff20")),
                         ..menu_cat.nav_bin.style_copy()
                     });
                 } else {
@@ -196,8 +202,11 @@ impl Menu {
                     });
 
                     menu_cat.nav_bin.style_update(BinStyle {
-                        border_size_b: None,
-                        border_color_b: None,
+                        border_radius_tl: None,
+                        border_radius_tr: None,
+                        border_radius_bl: None,
+                        border_radius_br: None,
+                        back_color: None,
                         ..menu_cat.nav_bin.style_copy()
                     });
                 }
@@ -258,11 +267,10 @@ impl Menu {
                         Character::Value(v) => {
                             text.push(*v);
                         },
-                        Character::Backspace => {
+                        Character::Backspace =>
                             if !text.is_empty() {
                                 text.pop();
-                            }
-                        },
+                            },
                     }
 
                     menu.display_search(text.clone());
@@ -282,10 +290,8 @@ impl Menu {
         let mut entries = self.entries.clone();
 
         entries.sort_by_key(|e| {
-            (strsim::jaro_winkler(
-                e.name.as_str(),
-                text.as_str()
-            ) * u64::max_value() as f64).floor() as u64
+            (strsim::jaro_winkler(e.name.as_str(), text.as_str()) * u64::max_value() as f64)
+                .floor() as u64
         });
 
         for menu_cat in self.categories.iter() {

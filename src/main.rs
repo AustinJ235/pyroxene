@@ -90,7 +90,17 @@ fn main() {
                 .into_iter()
                 .filter_map(|file| {
                     match DesktopEntry::new(&file) {
-                        Ok(ok) => Some(Arc::new(ok)),
+                        Ok(ok) =>
+                            if categories.iter().any(|c| {
+                                ok.categories
+                                    .iter()
+                                    .map(|c2| c2.to_lowercase())
+                                    .any(|c2| c2 == c.iden)
+                            }) {
+                                Some(Arc::new(ok))
+                            } else {
+                                None
+                            },
                         Err(e) =>
                             match e {
                                 DesktopEntryErr::NotApplication
